@@ -1,0 +1,38 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Conda environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: infrastructure-env
+          environment-file: environments/infrastructure.yaml
+          python-version: '3.10'
+          auto-activate-base: false
+
+      - name: Check code with Black
+        run: |
+          conda run --name infrastructure-env --no-capture-output black --check --line-length 120 src tests
+
+      - name: Lint code with Flake8
+        run: |
+          conda run --name infrastructure-env --no-capture-output flake8 src tests --max-line-length=120 --extend-ignore=D100,D101,D102,D103,D104,D105,D106,D107,E203,W503 --exclude=.git,__pycache__,build,dist,venv,.venv,.mypy_cache,.tox
+
+      - name: Sort imports with isort
+        run: |
+          conda run --name infrastructure-env --no-capture-output isort src tests --check-only --profile black
+
+      - name: Run tests with pytest
+        run: |
+          conda run --name infrastructure-env --no-capture-output pytest
