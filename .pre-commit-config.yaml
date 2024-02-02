@@ -1,0 +1,90 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.10.1
+    hooks:
+      - id: black
+        language_version: python3.10
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
+        language_version: python3.10
+      - id: isort
+        name: isort (cython)
+        types: [ cython ]
+        language_version: python3.10
+      - id: isort
+        name: isort (pyi)
+        types: [ pyi ]
+        language_version: python3.10
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies: [ flake8-bugbear==22.12.6, flake8-print ]
+        args:
+          - --max-line-length=120
+          - --extend-ignore=D100,D101,D102,D103,D104,D105,D106,D107,E203,W503
+          - --exclude=.git,__pycache__,build,dist,venv,.venv,.mypy_cache,.tox
+        language_version: python3.10
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.6.1
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-setuptools, types-requests]
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
+      - id: safety
+        name: safety
+        entry: safety check
+        language: python
+        additional_dependencies: [ safety ]
+        files: requirements\.txt$|Pipfile$|Pipfile\.lock$|poetry\.lock$|setup\.py$
+        # The above regex ensures safety runs only when dependency files are changed.
+
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-added-large-files
+        args: [ '--maxkb=1000' ]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-json
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: fix-encoding-pragma
+      - id: fix-byte-order-marker
+      - id: requirements-txt-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.7.0
+    hooks:
+      - id: nbqa
+        args: [black]
+        exclude: ^\.github/|LICENSE.md|README.md
+      - id: nbqa
+        args: [isort]
+        exclude: ^\.github/|LICENSE.md|README.md
+      - id: nbqa
+        args: [flake8]
+        exclude: ^\.github/|LICENSE.md|README.md
