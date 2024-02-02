@@ -12,63 +12,23 @@ from src.common.utils.serialization import JsonEncoder
 _logger = get_logger(__name__)
 
 
-class AzureSettings(BaseModel):
-    """The Azure settings."""
+class OpenAiSettings(BaseModel):
+    """OpenAI settings."""
 
-    tenant_id: str
-    subscription_id: str
-    location: str
-    resource_group: str
+    api_key: str
 
 
-class AzureMachineLearningSettings(BaseModel):
-    """The Azure Machine Learning settings."""
+class SteamlitSettings(BaseModel):
+    """Streamlit settings."""
 
-    workspace_name: str
-    sp_client_id: str
-    sp_client_secret: str
-
-
-class DatabaseSettings(BaseModel):
-    """The database settings."""
-
-    user_name: str
-    password: str
-    host: str
-    port: str
-    name: str
-    ssl_mode: str
-
-    @property
-    def uri(self) -> str:
-        return f"postgresql://{self.user_name}:{self.password}@{self.host}:{self.port}/{self.name}?{self.ssl_mode}"
-
-
-class BlobStorageSettings(BaseModel):
-    """The Azure Blob Storage settings."""
-
-    account_name: str
-    account_key: str
-
-    @property
-    def connection_string(self) -> str:
-        """The connection string to storage account."""
-        return (
-            "DefaultEndpointsProtocol=https;"
-            f"AccountName={self.account_name};"
-            f"AccountKey={self.account_key};"
-            "EndpointSuffix=core.windows.net"
-        )
+    api_key: str
 
 
 class Settings(BaseSettings):
     """Serves as a container for the settings."""
 
-    env: str
-    az: AzureSettings
-    aml: AzureMachineLearningSettings
-    db: DatabaseSettings
-    blob: BlobStorageSettings
+    oai: OpenAiSettings
+    st: SteamlitSettings
 
     class Config:
         env_file = ROOT_DIR / ".env"
@@ -116,6 +76,3 @@ class Settings(BaseSettings):
                     section[k] = f"{v[0]}***{v[-1]}" if len(v) > 1 else "*****"
 
         return json.dumps(settings_dict, indent=4, cls=JsonEncoder)
-
-
-CURRENT_SETTINGS = Settings()
