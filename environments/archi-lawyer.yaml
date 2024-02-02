@@ -1,4 +1,4 @@
-name: archi-prawnik-env
+name: archi-lawyer-env
 channels:
   - conda-forge
   - defaults
