@@ -11,5 +11,5 @@ dependencies:
       - isort==5.13.2
       - mypy==1.8.0
       - nbqa==1.7.1
-      - pytest==1.10.13
+      - pytest==8.0.0
       - pydantic[dotenv]==1.10.13
