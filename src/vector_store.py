@@ -16,7 +16,7 @@ from src.common.utils.logger import timed
 
 @timed
 def load_pdf_data(filepath: Path, chunk_size: int, chunk_overlap: int) -> List[Document]:
-    loader = UnstructuredPDFLoader(filepath)
+    loader = UnstructuredPDFLoader(filepath.as_posix())
     data = loader.load()
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     data = splitter.split_documents(data)
