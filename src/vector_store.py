@@ -71,6 +71,7 @@ class VectorStore:
         ]
         index.upsert(vectors=vectors_to_upsert)
 
-        _logger.info(index.describe_index_stats())
+        while index.describe_index_stats()["total_vector_count"] == 0:
+            time.sleep(1)
 
-        _logger.info("Documents upserted into Pinecone index.")
+        _logger.info(f"Documents upserted into Pinecone index.\n{index.describe_index_stats()}")
