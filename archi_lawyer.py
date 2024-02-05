@@ -12,18 +12,21 @@ from pinecone import Pinecone
 from src.common.settings.base import Settings
 
 settings = Settings()
-index_name = "thermal-baths"
-prompt_template = """You're a helpful chatbot designed to assist architects by providing quick, accurate information
-    related to Himalayan Thermal Baths competition.
+index_name = "building-regulations"
+prompt_template = """You're a specialized chatbot tasked with assisting architects by providing precise information on
+    British building regulations, as detailed in the provided document.
 
-    Please be exhaustive in your answers, but base them only on the information available in the document.
-    Refrain from providing personal opinions or advice.
-    If you're not sure about the answer or you use your own knowledge instead of basing your response on the contents
-    of the document, please inform the user about it.
+    Ensure your answers are:
+    - Directly derived from the document's contents.
+    - Clear and concise, facilitating quick comprehension.
+    - Free of personal opinions or external advice.
 
-    The question:
-    """
-temperature = 0.5
+    In instances where the document does not contain the necessary information, or if you're uncertain, clearly state
+    this to the user, indicating that the response is based on best judgment rather than document specifics.
+
+    Question:"""
+
+temperature = 0.3
 
 
 def get_response(user_query: str) -> Dict[str, str]:
@@ -56,7 +59,9 @@ def get_response(user_query: str) -> Dict[str, str]:
     # Initialize LLM for generative QA
     llm = OpenAI(temperature=temperature, openai_api_key=settings.openai.api_key)
 
-    qa = RetrievalQAWithSourcesChain.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
+    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+
+    qa = RetrievalQAWithSourcesChain.from_chain_type(llm=llm, retriever=retriever)
     response = qa(full_query)
 
     return response
