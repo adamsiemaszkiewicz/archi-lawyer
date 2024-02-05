@@ -19,6 +19,7 @@ class VectorStore:
         pc (Pinecone): The Pinecone client to use for interactions.
         index_name (str): The name of the Pinecone index to interact with.
         dimension (int): The dimension of the vectors to store.
+        metric (str): The distance metric used for vector comparison.
     """
 
     def __init__(self, api_key: str, index_name: str, dimension: int, metric: str) -> None:
@@ -65,10 +66,14 @@ class VectorStore:
         # Wait a second for connection
         time.sleep(1)
 
-        vectors_to_upsert = [
-            {"id": str(uuid.uuid4()), "values": embedding, "metadata": doc.metadata}
-            for doc, embedding in zip(data, embeddings)
-        ]
+        vectors_to_upsert = []
+        for doc, embedding in zip(data, embeddings):
+            doc_id = str(uuid.uuid4())
+            chunk_metadata = doc.metadata if doc.metadata else {}
+            chunk_metadata.update({"context": doc.page_content})
+
+            vectors_to_upsert.append({"id": doc_id, "values": embedding, "metadata": chunk_metadata})
+
         index.upsert(vectors=vectors_to_upsert)
 
         while index.describe_index_stats()["total_vector_count"] == 0:
