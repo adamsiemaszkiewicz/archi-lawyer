@@ -31,7 +31,7 @@ def main(model: BaseLLM, issue_description: str) -> str:
 if __name__ == "__main__":
     settings = Settings()
 
-    model = Model(api_key=settings.oai.api_key).model
+    model = Model(api_key=settings.openai.api_key).model
 
     issue_description = "What's the allowed width of the corridor in the residential building?"
 

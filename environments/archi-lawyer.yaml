@@ -9,12 +9,17 @@ dependencies:
       - black==24.1.1
       - flake8==7.0.0
       - isort==5.13.2
+      - langchain==0.1.5
       - langchain-community==0.0.17
       - langchain-openai==0.0.5
       - mypy==1.8.0
       - nbqa==1.7.1
+      - pdf2image==1.17.0
+      - pdfminer==20191125
+      - pinecone-client==3.0.2
       - pre-commit==3.6.0
       - pre-commit-hooks==4.5.0
       - pydantic[dotenv]==1.10.13
       - pytest==8.0.0
       - structlog==24.1.0
+      - unstructured[all-docs]==0.12.3
