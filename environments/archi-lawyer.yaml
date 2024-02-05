@@ -17,7 +17,6 @@ dependencies:
       - pdf2image
       - pdfminer
       - pinecone-client
-      - pinecone-datasets
       - pre-commit==3.6.0
       - pre-commit-hooks==4.5.0
       - pydantic[dotenv]==1.10.13
