@@ -21,5 +21,6 @@ dependencies:
       - pre-commit-hooks==4.5.0
       - pydantic[dotenv]==1.10.13
       - pytest==8.0.0
+      - streamlit==1.31.0
       - structlog==24.1.0
       - unstructured[all-docs]==0.12.3
