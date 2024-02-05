@@ -27,7 +27,7 @@ class PDFLoader:
         self.chunk_overlap = chunk_overlap
 
     @timed
-    def load_and_chunk_data(self) -> List[Document]:
+    def load_data(self) -> List[Document]:
         """
         Loads the PDF document and splits it into chunks.
 

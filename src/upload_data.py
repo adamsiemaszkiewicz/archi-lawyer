@@ -24,7 +24,7 @@ def main() -> None:
 
     _logger.info(f"Processing PDF: {filename}")
     pdf_processor = PDFLoader(filepath=document_fp, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    documents = pdf_processor.load_and_chunk_data()
+    documents = pdf_processor.load_data()
 
     _logger.info("Generating document embeddings.")
     embedding_generator = EmbeddingGenerator(api_key=settings.openai.api_key, model=embedding_model)
