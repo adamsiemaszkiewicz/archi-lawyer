@@ -6,7 +6,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_core.documents import Document
 
-from src.common.utils.logger import get_logger
+from src.common.utils.logger import get_logger, timed
 
 _logger = get_logger(__name__)
 
@@ -26,6 +26,7 @@ class PDFLoader:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
+    @timed
     def load_and_chunk_data(self) -> List[Document]:
         """
         Loads the PDF document and splits it into chunks.
