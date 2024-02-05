@@ -11,7 +11,7 @@ from src.common.utils.logger import get_logger
 _logger = get_logger(__name__)
 
 
-class PDFProcessor:
+class PDFLoader:
     """
     Processes PDF documents by loading and then splitting them into chunks.
 
