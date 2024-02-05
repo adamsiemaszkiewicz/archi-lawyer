@@ -18,6 +18,12 @@ class OpenAiSettings(BaseModel):
     api_key: str
 
 
+class PineconeSettings(BaseModel):
+    """Pinecone settings."""
+
+    api_key: str
+
+
 class SteamlitSettings(BaseModel):
     """Streamlit settings."""
 
@@ -27,8 +33,9 @@ class SteamlitSettings(BaseModel):
 class Settings(BaseSettings):
     """Serves as a container for the settings."""
 
-    oai: OpenAiSettings
-    st: SteamlitSettings
+    openai: OpenAiSettings
+    pinecone: PineconeSettings
+    streamlit: SteamlitSettings
 
     class Config:
         env_file = ROOT_DIR / ".env"
