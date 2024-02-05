@@ -65,12 +65,12 @@ class VectorStore:
         # Wait a second for connection
         time.sleep(1)
 
-        _logger.info(index.describe_index_stats())
-
         vectors_to_upsert = [
             {"id": str(uuid.uuid4()), "values": embedding, "metadata": doc.metadata}
             for doc, embedding in zip(data, embeddings)
         ]
         index.upsert(vectors=vectors_to_upsert)
+
+        _logger.info(index.describe_index_stats())
 
         _logger.info("Documents upserted into Pinecone index.")
