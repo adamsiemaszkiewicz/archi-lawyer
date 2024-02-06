@@ -42,6 +42,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "yaml.*",
+    "retry"
 ]
 ignore_missing_imports = true
 
