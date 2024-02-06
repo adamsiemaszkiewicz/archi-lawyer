@@ -13,7 +13,6 @@ def main() -> None:
     settings = Settings()
 
     filename = "The_Building_Regulations_Mar_2023.pdf"
-    # filename = "NonA_Well-being_Thermal Baths.pdf"
     document_fp = DATA_DIR / filename
     chunk_size = 1000
     chunk_overlap = 100
