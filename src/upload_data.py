@@ -12,12 +12,12 @@ _logger = get_logger(__name__)
 def main() -> None:
     settings = Settings()
 
-    filename = "NonA_Well-being_Thermal Baths.pdf"
+    filename = "The_Building_Regulations_Mar_2023.pdf"
     document_fp = DATA_DIR / filename
     chunk_size = 1000
     chunk_overlap = 100
 
-    index_name = "thermal-baths"
+    index_name = "building-regulations"
     embedding_model = "text-embedding-ada-002"
     embedding_dimension = 1536
     metric = "cosine"
