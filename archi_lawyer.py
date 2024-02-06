@@ -10,10 +10,6 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_openai.llms import OpenAI
 from pinecone import Pinecone
 
-from src.common.settings.base import Settings
-
-settings = Settings()
-
 INDEX_NAME = "building-regulations"
 PROMPT_TEMPLATE = """You're a specialized chatbot tasked with assisting architects by providing precise information on
 British building regulations, as detailed in the provided document.
@@ -46,9 +42,9 @@ def get_response(user_query: str) -> Dict[str, Optional[str]]:
         Dict[str, Optional[str]]: A dictionary containing the 'answer' and optionally 'sources'.
     """
     full_query = PROMPT_TEMPLATE + user_query
-    pc_client = initialize_pinecone_client(api_key=settings.pinecone.api_key)
+    pc_client = initialize_pinecone_client(api_key=st.secrets["pinecone_api_key"])
 
-    embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=settings.openai.api_key)
+    embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=st.secrets["openai_api_key"])
     index = pc_client.Index(INDEX_NAME)
 
     # Wait for index connection
@@ -57,7 +53,7 @@ def get_response(user_query: str) -> Dict[str, Optional[str]]:
     index.describe_index_stats()
 
     vectorstore = LangChainPinecone(index=index, embedding=embedding_model, text_key="context")
-    llm = OpenAI(temperature=TEMPERATURE, openai_api_key=settings.openai.api_key)
+    llm = OpenAI(temperature=TEMPERATURE, openai_api_key=st.secrets["openai_api_key"])
     retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": NUM_RETRIEVED_DOCS})
 
     qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm=llm, retriever=retriever)
