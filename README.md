@@ -25,13 +25,19 @@ Page 739 of the document
     ```bash
     git clone https://github.com/adamsiemaszkiewicz/archi-lawyer
     ```
-2. Install the necessary dependencies (if any).
+2. Install the necessary dependencies and activate the environment.
 
     ```bash
     conda env create -f environments/archi_lawyer.yaml
     ```
 
-3. Run the chatbot application.
+5. Create a `secrets.toml` file in the `.streamlit/` directory with the OpenAI API & Pinecone credentials
+
+   ```
+   openai_api_key = "your_openai_api_key"
+   pinecone_api_key = "your_pinecone_api_key"
+   ```
+4. Run the chatbot application.
 
     ```bash
    streamlit run archi_lawyer.py
