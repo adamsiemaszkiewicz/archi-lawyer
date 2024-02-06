@@ -12,10 +12,8 @@ from pinecone import Pinecone
 
 from src.common.settings.base import Settings
 
-# Load settings from a configuration file or environment variables
 settings = Settings()
 
-# Constants for the application
 INDEX_NAME = "building-regulations"
 PROMPT_TEMPLATE = """You're a specialized chatbot tasked with assisting architects by providing precise information on
 British building regulations, as detailed in the provided document.
@@ -68,7 +66,6 @@ def get_response(user_query: str) -> Dict[str, Optional[str]]:
     return response
 
 
-# Streamlit interface setup
 st.title("Architect Assistant Chatbot")
 st.write(
     """
@@ -88,7 +85,6 @@ Page 739 of the document
 """
 )
 
-# User input
 user_query = st.text_area("Enter your question here:")
 if st.button("Get Response"):
     if user_query:
