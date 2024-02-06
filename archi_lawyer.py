@@ -29,6 +29,7 @@ In instances where the document does not contain the necessary information, or i
 this to the user, indicating that the response is based on best judgment rather than document specifics.
 
 Question:"""
+NUM_RETRIEVED_DOCS = 5
 TEMPERATURE = 0.3
 
 
@@ -59,7 +60,7 @@ def get_response(user_query: str) -> Dict[str, Optional[str]]:
 
     vectorstore = LangChainPinecone(index=index, embedding=embedding_model, text_key="context")
     llm = OpenAI(temperature=TEMPERATURE, openai_api_key=settings.openai.api_key)
-    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": NUM_RETRIEVED_DOCS})
 
     qa_chain = RetrievalQAWithSourcesChain.from_chain_type(llm=llm, retriever=retriever)
     response = qa_chain(full_query)
