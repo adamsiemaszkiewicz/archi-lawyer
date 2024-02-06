@@ -13,6 +13,7 @@ def main() -> None:
     settings = Settings()
 
     filename = "The_Building_Regulations_Mar_2023.pdf"
+    # filename = "NonA_Well-being_Thermal Baths.pdf"
     document_fp = DATA_DIR / filename
     chunk_size = 1000
     chunk_overlap = 100
@@ -21,6 +22,8 @@ def main() -> None:
     embedding_model = "text-embedding-ada-002"
     embedding_dimension = 1536
     metric = "cosine"
+
+    batch_size = 100
 
     _logger.info(f"Processing PDF: {filename}")
     pdf_processor = PDFLoader(filepath=document_fp, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -34,7 +37,7 @@ def main() -> None:
     vector_store = VectorStore(
         api_key=settings.pinecone.api_key, index_name=index_name, dimension=embedding_dimension, metric=metric
     )
-    vector_store.upsert_documents(data=documents, embeddings=embeddings)
+    vector_store.upsert_documents(data=documents, embeddings=embeddings, batch_size=batch_size)
 
 
 if __name__ == "__main__":

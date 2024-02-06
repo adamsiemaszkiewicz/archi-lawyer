@@ -4,9 +4,10 @@ import uuid
 from typing import List
 
 from langchain_core.documents import Document
-from pinecone import Pinecone, PodSpec
+from pinecone import Index, Pinecone, PodSpec
+from tqdm import tqdm
 
-from .common.utils.logger import get_logger, timed
+from src.common.utils.logger import get_logger, timed
 
 _logger = get_logger(__name__)
 
@@ -51,13 +52,14 @@ class VectorStore:
         _logger.info(f"Index {self.index_name} created or verified in Pinecone.")
 
     @timed
-    def upsert_documents(self, data: List[Document], embeddings: List[List[float]]) -> None:
+    def upsert_documents(self, data: List[Document], embeddings: List[List[float]], batch_size: int = 100) -> None:
         """
         Upserts documents and their embeddings into the Pinecone index.
 
         Args:
             data (List[Document]): The documents to upsert.
             embeddings (List[List[float]]): The embeddings corresponding to each document.
+            batch_size (int): The number of documents to upsert in each batch.
         """
         _logger.info(f"Upserting {len(data)} documents into index: {self.index_name}")
 
@@ -66,17 +68,52 @@ class VectorStore:
         # Wait a second for connection
         time.sleep(1)
 
+        expected_vectors = 0
+
+        for i in tqdm(range(0, len(data), batch_size)):
+            batch_data = data[i : i + batch_size]
+            batch_embeddings = embeddings[i : i + batch_size]
+            self._upsert_batch(index=index, datadata=batch_data, embeddings=batch_embeddings)
+            expected_vectors += len(batch_data)
+
+            while index.describe_index_stats()["total_vector_count"] < expected_vectors:
+                time.sleep(1)
+
+            _logger.info(f"Batch upserted into Pinecone index.\n{index.describe_index_stats()}")
+
+        _logger.info(f"A total of {len(data)} documents upserted into Pinecone index.\n{index.describe_index_stats()}")
+
+    def _upsert_batch(self, index: Index, datadata: List[Document], embeddings: List[List[float]]) -> None:
+        """
+        Helper function to upsert a batch of documents and their embeddings.
+
+        Args:
+            index (Index): The Pinecone index to upsert into.
+            datadata (List[Document]): The batch of documents to upsert.
+            embeddings (List[List[float]]): The embeddings corresponding to the batch of documents.
+        """
+        vectors_to_upsert = self._prepare_vectors_for_upsert(datadata, embeddings)
+        index.upsert(vectors=vectors_to_upsert)
+
+    def _prepare_vectors_for_upsert(
+        self, batch_data: List[Document], batch_embeddings: List[List[float]]
+    ) -> List[dict]:
+        """
+        Prepares the vectors for upserting by assigning unique IDs and attaching metadata.
+
+        Args:
+            batch_data (List[Document]): The batch of documents to prepare.
+            batch_embeddings (List[List[float]]): The embeddings corresponding to the batch of documents.
+
+        Returns:
+            List[dict]: A list of vectors ready for upserting, including IDs, values, and metadata.
+        """
         vectors_to_upsert = []
-        for doc, embedding in zip(data, embeddings):
+        for doc, embedding in zip(batch_data, batch_embeddings):
             doc_id = str(uuid.uuid4())
             chunk_metadata = doc.metadata if doc.metadata else {}
             chunk_metadata.update({"context": doc.page_content})
 
             vectors_to_upsert.append({"id": doc_id, "values": embedding, "metadata": chunk_metadata})
 
-        index.upsert(vectors=vectors_to_upsert)
-
-        while index.describe_index_stats()["total_vector_count"] == 0:
-            time.sleep(1)
-
-        _logger.info(f"Documents upserted into Pinecone index.\n{index.describe_index_stats()}")
+        return vectors_to_upsert
