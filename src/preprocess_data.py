@@ -79,6 +79,17 @@ def contains_new_section(text: str) -> bool:
     return match is not None
 
 
+def contains_new_paragraph(text: str) -> bool:
+    # Define the regex pattern: 'Rozdział ' followed by one or more Arabic numeral characters
+    pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*a\s*ł\s+\d+"
+
+    # Use re.search to find the pattern in the input string
+    match = re.search(pattern, text)
+
+    # Return True if a match is found, otherwise False
+    return match is not None
+
+
 if __name__ == "__main__":
     pdf_fp = DATA_DIR / "D20191065.pdf"
 
