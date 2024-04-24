@@ -108,36 +108,70 @@ if __name__ == "__main__":
         document.page_content = page_content
 
     restructured_document = []
-
     section_idx = 0
+    paragraph_idx = 0
+
     tmp_document = Document(
         page_content="",
-        metadata={"section_id": section_idx, "paragraph_id": 0, "document_id": f"{pdf_fp.name}", "pages": []},
+        metadata={
+            "section_id": section_idx,
+            "paragraph_id": paragraph_idx,
+            "document_id": f"{pdf_fp.name}",
+            "pages": [],
+        },
     )
 
     for page_no, document in enumerate(full_document):
 
         if contains_new_section(document.page_content):
+            split_sections = re.split(r"D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+", document.page_content)
 
-            split_page_content = re.split(r"D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+", document.page_content)
-
-            tmp_document.page_content += split_page_content[0]
-            tmp_document.metadata["pages"].append(page_no)
-
-            restructured_document.append(tmp_document)
+            if tmp_document.page_content:
+                restructured_document.append(tmp_document)
 
             section_idx += 1
+            paragraph_idx = 0
+
+            # Start a new section document
             tmp_document = Document(
                 page_content="",
                 metadata={
                     "section_id": section_idx,
-                    "paragraph_id": 0,
+                    "paragraph_id": paragraph_idx,
                     "document_id": f"{pdf_fp.name}",
                     "pages": [page_no],
                 },
             )
-            tmp_document.page_content = split_page_content[1]
 
+            if len(split_sections) > 1:
+                tmp_document.page_content = split_sections[1]
+
+        # Check for new paragraph within the current section
+        if contains_new_paragraph(document.page_content):
+            split_paragraphs = re.split(r"R\s*o\s*z\s*d\s*z\s*i\s*a\s*ł\s+\d+", document.page_content)
+
+            if len(split_paragraphs) > 1:
+                if tmp_document.page_content:
+                    tmp_document.page_content += split_paragraphs[0]
+                    restructured_document.append(tmp_document)
+
+                paragraph_idx += 1
+
+                # Start a new paragraph document
+                tmp_document = Document(
+                    page_content="",
+                    metadata={
+                        "section_id": section_idx,
+                        "paragraph_id": paragraph_idx,
+                        "document_id": f"{pdf_fp.name}",
+                        "pages": [page_no],
+                    },
+                )
+                tmp_document.page_content = split_paragraphs[1]
         else:
             tmp_document.page_content += document.page_content
             tmp_document.metadata["pages"].append(page_no)
+
+        # Append the final document if it was not added yet
+        if page_no == len(full_document) - 1:
+            restructured_document.append(tmp_document)
