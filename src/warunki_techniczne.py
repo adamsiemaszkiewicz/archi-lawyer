@@ -161,6 +161,63 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
     return restructured_document
 
 
+def restructure_by_paragraphs(documents: List[Document]) -> List[Document]:
+    restructured_paragraphs = []
+    paragraph_idx = 0
+
+    for section in documents:
+        current_paragraph = Document(
+            page_content="",
+            metadata={
+                "paragraph_id": paragraph_idx,
+                "section_id": section.metadata["section_id"],
+                "document_id": section.metadata["document_id"],
+                "pages": [],
+            },
+        )
+
+        page_content = section.page_content
+        page_numbers = section.metadata["pages"]
+
+        # Pattern to match 'Rozdział ' followed by numbers possibly followed by a letter
+        paragraph_pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*a\s*ł\s+(\d+[a-zA-Z]?)"
+        matches = list(re.finditer(paragraph_pattern, page_content))
+
+        last_index = 0
+        for match in matches:
+            index_start = match.start()
+            index_end = match.end()
+
+            content_before = page_content[last_index:index_start]
+
+            if content_before.strip():  # Ensure not to add empty strings
+                current_paragraph.page_content = content_before
+                current_paragraph.metadata["pages"] = page_numbers
+                restructured_paragraphs.append(current_paragraph)
+
+            paragraph_idx += 1
+            current_paragraph = Document(
+                page_content="",
+                metadata={
+                    "paragraph_id": paragraph_idx,
+                    "section_id": section.metadata["section_id"],
+                    "document_id": section.metadata["document_id"],
+                    "pages": page_numbers,
+                },
+            )
+
+            last_index = index_end
+
+        # Append the remainder of the section content after the last match
+        remainder = page_content[last_index:]
+        if remainder.strip():
+            current_paragraph.page_content = remainder
+            current_paragraph.metadata["pages"] = page_numbers
+            restructured_paragraphs.append(current_paragraph)
+
+    return restructured_paragraphs
+
+
 if __name__ == "__main__":
     pdf_fp = DATA_DIR / "D20191065.pdf"
 
@@ -169,4 +226,5 @@ if __name__ == "__main__":
 
     preprocessed_documents = preprocess_documents(original_documents)
 
-    restructured_documents = restructure_documents_by_sections(preprocessed_documents)
+    restructured_sections = restructure_documents_by_sections(preprocessed_documents)
+    restructured_paragraphs = restructure_by_paragraphs(restructured_sections)
