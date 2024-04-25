@@ -75,6 +75,21 @@ def merge_newline_divided_words(text: str) -> str:
     return merged_text
 
 
+def preprocess_documents(documents: List[Document]) -> List[Document]:
+    for doc in documents:
+        page_content = doc.page_content
+
+        page_content = remove_header(page_content)
+        page_content = strip_prefix(page_content)
+        page_content = wrap_footer(page_content)
+        page_content = link_annotations(page_content)
+        page_content = merge_newline_divided_words(page_content)
+
+        doc.page_content = page_content
+
+    return documents
+
+
 def contains_new_section(text: str) -> bool:
     # Define the regex pattern: 'DZIAŁ ' followed by one or more Roman numeral characters
     pattern = r"D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+"
@@ -86,7 +101,7 @@ def contains_new_section(text: str) -> bool:
     return bool(match)
 
 
-def restructure_documents_by_sections(full_document: List[Document]) -> List[Document]:
+def restructure_documents_by_sections(documents: List[Document]) -> List[Document]:
     restructured_document = []
     section_idx = 0
     current_page_number = 0  # Tracking current page number
@@ -98,9 +113,9 @@ def restructure_documents_by_sections(full_document: List[Document]) -> List[Doc
 
     section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"  # Pattern to match the whole 'DZIAŁ XXX' text
 
-    for document in full_document:
+    for doc in documents:
         current_page_number += 1  # Increment page number as we go through each document
-        page_content = document.page_content
+        page_content = doc.page_content
         search_result = re.search(section_pattern, page_content)
 
         if search_result:
@@ -150,17 +165,8 @@ if __name__ == "__main__":
     pdf_fp = DATA_DIR / "D20191065.pdf"
 
     loader = PyPDFLoader(file_path=pdf_fp.as_posix())
-    full_document = loader.load()
+    original_documents = loader.load()
 
-    for document in full_document:
-        page_content = document.page_content
+    preprocessed_documents = preprocess_documents(original_documents)
 
-        page_content = remove_header(page_content)
-        page_content = strip_prefix(page_content)
-        page_content = wrap_footer(page_content)
-        page_content = link_annotations(page_content)
-        page_content = merge_newline_divided_words(page_content)
-
-        document.page_content = page_content
-
-    restructured_document = restructure_documents_by_sections(full_document)
+    restructured_documents = restructure_documents_by_sections(preprocessed_documents)
