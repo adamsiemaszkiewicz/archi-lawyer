@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from typing import List, Tuple
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents.base import Document
@@ -90,6 +91,42 @@ def contains_new_paragraph(text: str) -> bool:
     return match is not None
 
 
+def extract_appendices(document: Document) -> Tuple[Document, List[Document]]:
+    # Define appendix header patterns
+    appendix_headers = ["Załącznik nr 193", "Załącznik nr 294", "Załącznik nr 395"]
+
+    # Pattern to capture content starting from each appendix header
+    pattern = "|".join([re.escape(header) for header in appendix_headers])
+
+    # Split the document content at each appendix header
+    parts = re.split(f"({pattern})", document.page_content)
+
+    # Initialize variables
+    appendix_documents = []
+    updated_content = parts[0]  # Start with initial content (before first appendix)
+    appendix_idx = 1  # Start the appendix index at 1
+
+    for i in range(1, len(parts), 2):
+        appendix_content = parts[i + 1] if (i + 1) < len(parts) else ""
+
+        # Create new metadata for the appendix document indicating its index and nullifying section/paragraph IDs
+        new_metadata = document.metadata.copy()
+        new_metadata["appendix_idx"] = appendix_idx
+        new_metadata["section_id"] = None  # Nullify section_id
+        new_metadata["paragraph_id"] = None  # Nullify paragraph_id
+
+        # Add the appendix document, excluding the header text from the content
+        appendix_documents.append(Document(page_content=appendix_content, metadata=new_metadata))
+
+        # Increment the appendix index for the next appendix
+        appendix_idx += 1
+
+    # Create updated last document excluding the appendix sections
+    updated_last_document = Document(page_content=updated_content, metadata=document.metadata)
+
+    return updated_last_document, appendix_documents
+
+
 if __name__ == "__main__":
     pdf_fp = DATA_DIR / "D20191065.pdf"
 
@@ -175,3 +212,11 @@ if __name__ == "__main__":
         # Append the final document if it was not added yet
         if page_no == len(full_document) - 1:
             restructured_document.append(tmp_document)
+
+    # Assuming restructured_document is the list containing the restructured documents
+    last_document = restructured_document.pop(-1)
+    updated_last_document, appendix_documents = extract_appendices(last_document)
+
+    # Update the list
+    restructured_document.append(updated_last_document)
+    restructured_document.extend(appendix_documents)
