@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import re
 from typing import List
 
@@ -6,6 +7,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents.base import Document
 
 from src.common.consts.directories import DATA_DIR
+
+logging.basicConfig(level=logging.INFO)
 
 
 def strip_prefix(text: str) -> str:
@@ -90,11 +93,10 @@ def restructure_documents_by_sections(full_document: List[Document]) -> List[Doc
 
     current_section = Document(
         page_content="",
-        metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": []},  # This will hold page numbers
+        metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": []},
     )
 
-    # Update pattern to match the whole 'DZIAŁ XXX' text
-    section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"
+    section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"  # Pattern to match the whole 'DZIAŁ XXX' text
 
     for document in full_document:
         current_page_number += 1  # Increment page number as we go through each document
@@ -102,46 +104,41 @@ def restructure_documents_by_sections(full_document: List[Document]) -> List[Doc
         search_result = re.search(section_pattern, page_content)
 
         if search_result:
-            # Split the text exactly at the section pattern, excluding the separator
             index_start = search_result.start()
             index_end = search_result.end()
 
-            # Content before the section header, excluding the separator
             content_before = page_content[:index_start]
-            # Content starting after the section header
             content_after = page_content[index_end:]
 
-            # Append content before the section header to the current section
             if content_before.strip():  # Ensure not to add empty strings
                 current_section.page_content += content_before
                 current_section.metadata["pages"].append(current_page_number)
+                logging.info(
+                    f"Ending Section {section_idx} on Page {current_page_number}: " f"with '{content_before[-150:]}'"
+                )
 
-                if current_section.page_content:
-                    restructured_document.append(current_section)
+            if current_section.page_content:
+                restructured_document.append(current_section)
 
             # Start a new section
             section_idx += 1
             current_section = Document(
                 page_content=content_after,
-                metadata={
-                    "section_id": section_idx,
-                    "document_id": pdf_fp.name,
-                    "pages": [current_page_number],  # Start new section with current page
-                },
+                metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": [current_page_number]},
+            )
+            logging.info(
+                f"Starting Section {section_idx} from Page {current_page_number}: " f"with '{content_after[:150]}'"
             )
         else:
-            # If no new section is found, continue appending to the current section
             current_section.page_content += page_content + "\n"
             current_section.metadata["pages"].append(current_page_number)
 
-    # Add the last section to the list
     if current_section.page_content:
-        # Ensure no duplicates in the page list
         current_section.metadata["pages"] = list(set(current_section.metadata["pages"]))
         current_section.metadata["pages"].sort()
         restructured_document.append(current_section)
+        logging.info(f"Finalizing Section {section_idx}: " f"Total Pages {len(current_section.metadata['pages'])}")
 
-    # Sort and remove duplicates from page lists in all sections
     for section in restructured_document:
         section.metadata["pages"] = list(set(section.metadata["pages"]))
         section.metadata["pages"].sort()
