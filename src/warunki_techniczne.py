@@ -116,27 +116,25 @@ def int_to_roman(num: int) -> str:
 
 def restructure_documents_by_sections(documents: List[Document]) -> List[Document]:
     """
-    Restructure documents by sections, adding a formatted header to each section.
-    For section 0, the header is 'WSTĘP', and for others, it is 'DZIAŁ XXX' with Roman numerals.
+    Restructure documents by sections, adding a formatted header to each section including the title.
 
     Args:
         documents (List[Document]): List of documents to restructure.
 
     Returns:
-        List[Document]: List of restructured documents with section headers.
+        List[Document]: List of restructured documents with section headers and titles.
     """
     restructured_document = []
     section_idx = 0
     current_page_number = 0  # Tracking current page number
 
-    # Initial section start with an introductory header
+    # Initial section start with an introductory header if applicable
     header = "WSTĘP\n---------\n\n"
     current_section = Document(
         page_content=header, metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": []}
     )
 
-    section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"  # Pattern to match the whole 'DZIAŁ XXX' text
-
+    section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"
     for doc in documents:
         current_page_number += 1  # Increment page number as we go through each document
         page_content = doc.page_content
@@ -146,8 +144,13 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
             index_start = search_result.start()
             index_end = search_result.end()
 
+            # Extract the title immediately following the section header
+            title_start = page_content.find("\n", index_end) + 1
+            title_end = page_content.find("\n", title_start)
+            title = page_content[title_start:title_end].strip()
+
             content_before = page_content[:index_start]
-            content_after = page_content[index_end:]
+            content_after = page_content[title_end + 1 :]
 
             if content_before.strip():  # Ensure not to add empty strings
                 current_section.page_content += content_before
@@ -159,7 +162,8 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
             # Start a new section
             section_idx += 1
             roman_num = int_to_roman(section_idx) if section_idx > 0 else "WSTĘP"
-            header = f"DZIAŁ {roman_num}\n---------\n\n" if section_idx > 0 else "WSTĘP\n---------\n\n"
+            section_name = "DZIAŁ" if section_idx > 0 else "WSTĘP"
+            header = f"{section_name} {roman_num}\n{title}\n---------\n\n"
             current_section = Document(
                 page_content=header + content_after,
                 metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": [current_page_number]},
