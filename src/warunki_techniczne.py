@@ -38,16 +38,16 @@ def remove_header(text: str) -> str:
 
 
 def wrap_footer(text: str) -> str:
+    """Wraps the footer of the text within XML tags for references."""
     # Define the pattern to find footer text after two newlines (with optional whitespace)
     pattern = r"(\n\s*\n)(\S[\s\S]*)$"
 
-    # Function to wrap the footer text in a marker
+    # Function to wrap the footer text in XML tags
     def wrapper(match: re.Match) -> str:
-        return match.group(1) + "[Odniesienia - początek]\n" + match.group(2) + "\n[Odniesienia - koniec]\n"
+        return match.group(1) + "<przypisy>\n" + match.group(2) + "\n</przypisy>\n"
 
-    # Replace the pattern with wrapped footer text
+    # Replace the pattern with wrapped footer text in XML tags
     updated_text = re.sub(pattern, wrapper, text, flags=re.MULTILINE)
-
     return updated_text
 
 
@@ -55,7 +55,7 @@ def link_annotations(text: str) -> str:
     # Pattern to find 'word ending with [number)]' where 'word' starts with alphabetic characters
     pattern = r"(\b[a-zA-Z]+\w*)(\d+\))"
     # Replacement pattern that formats the word and number into a reference format
-    result = re.sub(pattern, r"\1 (patrz Odniesienie \2)", text)
+    result = re.sub(pattern, r"\1 <przypis>\2</przypis>)", text)
     # Adjust the parenthesis in the result to correctly format numbers
     result = re.sub(r"(\d+)\)", r"\1", result)
     return result
@@ -115,28 +115,16 @@ def int_to_roman(num: int) -> str:
 
 
 def restructure_documents_by_sections(documents: List[Document]) -> List[Document]:
-    """
-    Restructure documents by sections, adding a formatted header to each section including the title.
-
-    Args:
-        documents (List[Document]): List of documents to restructure.
-
-    Returns:
-        List[Document]: List of restructured documents with section headers and titles.
-    """
+    """Restructures a list of documents by sections, adding XML headers to section names and titles."""
     restructured_document = []
     section_idx = 0
-    current_page_number = 0  # Tracking current page number
-
-    # Initial section start with an introductory header if applicable
-    header = "WSTĘP\n---------\n\n"
-    current_section = Document(
-        page_content=header, metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": []}
-    )
-
     section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"
+
+    # Initialize an empty Document to start with the introductory header
+    header = "<dział>\n  <nazwa>WSTĘP</nazwa>\n</dział>\n"
+    current_section = Document(page_content=header, metadata={})
+
     for doc in documents:
-        current_page_number += 1  # Increment page number as we go through each document
         page_content = doc.page_content
         search_result = re.search(section_pattern, page_content)
 
@@ -154,96 +142,68 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
 
             if content_before.strip():  # Ensure not to add empty strings
                 current_section.page_content += content_before
-                current_section.metadata["pages"].append(current_page_number)
 
             if current_section.page_content:
                 restructured_document.append(current_section)
 
-            # Start a new section
+            # Start a new section with XML-wrapped name and title
             section_idx += 1
-            roman_num = int_to_roman(section_idx) if section_idx > 0 else "WSTĘP"
-            section_name = "DZIAŁ" if section_idx > 0 else "WSTĘP"
-            header = f"{section_name} {roman_num}\n{title}\n---------\n\n"
+            roman_num = int_to_roman(section_idx)
+            section_name = "DZIAŁ"
+            header = f"<dział>\n  <nazwa>{section_name} {roman_num}</nazwa>\n  <tytuł>{title}</tytuł>\n</dział>\n"
+
             current_section = Document(
                 page_content=header + content_after,
-                metadata={"section_id": section_idx, "document_id": pdf_fp.name, "pages": [current_page_number]},
+                metadata={"section_id": section_idx, "document_id": doc.metadata.get("document_id", "")},
             )
         else:
             current_section.page_content += page_content + "\n"
-            current_section.metadata["pages"].append(current_page_number)
 
     if current_section.page_content:
-        current_section.metadata["pages"] = list(set(current_section.metadata["pages"]))
-        current_section.metadata["pages"].sort()
         restructured_document.append(current_section)
 
     return restructured_document
 
 
-def restructure_by_paragraphs(documents: List[Document]) -> List[Document]:
-    restructured_paragraphs = []
+def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Document]:
+    paragraph_pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*ał\s+\d+[a-z]?"
+    restructured_documents = []
     paragraph_idx = 0
 
-    for section in documents:
-        section_number_roman = int_to_roman(section.metadata["section_id"])
-        current_paragraph = Document(
-            page_content="",
-            metadata={
-                "paragraph_id": paragraph_idx,
-                "section_id": section.metadata["section_id"],
-                "document_id": section.metadata["document_id"],
-                "pages": [],
-            },
-        )
+    for doc in documents:
+        page_content = doc.page_content
+        paragraph_splits = list(re.finditer(paragraph_pattern, page_content))
 
-        page_content = section.page_content
-        page_numbers = section.metadata["pages"]
+        if not paragraph_splits:
+            # No paragraphs found, treat whole content as a single paragraph
+            doc.metadata["paragraph_id"] = paragraph_idx
+            restructured_documents.append(doc)
+            continue
 
-        # Pattern to match 'Rozdział ' followed by numbers possibly followed by a letter
-        paragraph_pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*a\s*ł\s+(\d+[a-zA-Z]?)"
-        matches = list(re.finditer(paragraph_pattern, page_content))
+        # Process each split point
+        start_idx = 0
+        for match in paragraph_splits:
+            end_idx = match.start()
+            if start_idx != end_idx:
+                # Add the previous paragraph
+                paragraph_content = page_content[start_idx:end_idx].strip()
+                if paragraph_content:
+                    restructured_documents.append(
+                        Document(page_content=paragraph_content, metadata={"paragraph_id": paragraph_idx})
+                    )
+                    paragraph_idx += 1
 
-        last_index = 0
-        for match in matches:
-            index_start = match.start()
-            index_end = match.end()
+            start_idx = end_idx
 
-            content_before = page_content[last_index:index_start]
-            chapter_number = match.group(1).strip()
-
-            header = f"DZIAŁ {section_number_roman}\nRozdział {chapter_number}\n---------------\n"
-
-            if content_before.strip():
-                current_paragraph.page_content = header + content_before
-                current_paragraph.metadata["pages"] = page_numbers
-                restructured_paragraphs.append(current_paragraph)
-
+        # Add the last paragraph in the document
+        last_paragraph = page_content[start_idx:].strip()
+        if last_paragraph:
+            restructured_documents.append(
+                Document(page_content=last_paragraph, metadata={"paragraph_id": paragraph_idx})
+            )
             paragraph_idx += 1
-            current_paragraph = Document(
-                page_content="",
-                metadata={
-                    "paragraph_id": paragraph_idx,
-                    "section_id": section.metadata["section_id"],
-                    "document_id": section.metadata["document_id"],
-                    "pages": page_numbers,
-                },
-            )
 
-            last_index = index_end
-
-        # Append the remainder of the section content after the last match
-        remainder = page_content[last_index:]
-        if remainder.strip():
-            header = (
-                f"DZIAŁ {section_number_roman}\n"
-                f"Rozdział {matches[-1].group(1).strip() if matches else '1'}\n"
-                "---------------\n"
-            )
-            current_paragraph.page_content = header + remainder
-            current_paragraph.metadata["pages"] = page_numbers
-            restructured_paragraphs.append(current_paragraph)
-
-    return restructured_paragraphs
+    return restructured_documents
 
 
 if __name__ == "__main__":
@@ -255,4 +215,4 @@ if __name__ == "__main__":
     preprocessed_documents = preprocess_documents(original_documents)
 
     restructured_sections = restructure_documents_by_sections(preprocessed_documents)
-    restructured_paragraphs = restructure_by_paragraphs(restructured_sections)
+    restructured_paragraphs = restructure_documents_by_paragraphs(restructured_sections)
