@@ -23,7 +23,7 @@ def strip_prefix(text: str) -> str:
     Returns:
         str: The text with the prefix removed if it was present.
     """
-    # Prefix pattern, usually found in legal documents issued on specific dates
+    # Account for optional whitespaces and newline characters
     prefix_pattern = (
         r"^\s*Załącznik\s*do\s*obwieszczenia\s*Ministra\s*Inwestycji\s*i\s*Rozwoju\s*"
         r"z\s*dnia\s*8\s*kwietnia\s*2019\s*r\.\s*\(poz\.\s*1065\)\s*"
@@ -43,10 +43,9 @@ def remove_header(text: str) -> str:
     Returns:
         str: Text with the header removed.
     """
-    # Define the pattern, accounting for variable digits and flexible whitespace/newlines
+    # Account for optional whitespaces and newline characters
     pattern = r"\s*\n*Dziennik Ustaw –\s*\d+\s*– Poz\. 1065\s*\n*"
 
-    # Replace the pattern with an empty string to remove it
     updated_text = re.sub(pattern, r"\n", text, flags=re.MULTILINE)
     return updated_text
 
@@ -61,14 +60,13 @@ def wrap_footer(text: str) -> str:
     Returns:
         str: Text with the footer wrapped in XML tags.
     """
-    # Define the pattern to find footer text after two newlines (with optional whitespace)
+    # Find two newlines followed by non-whitespace characters at the end of the text
     pattern = r"(\n\s*\n)(\S[\s\S]*)$"
 
-    # Function to wrap the footer text in XML tags
     def wrapper(match: re.Match) -> str:
+        """Wraps the footer text in XML tags."""
         return match.group(1) + "<przypisy>\n" + match.group(2) + "\n</przypisy>\n"
 
-    # Replace the pattern with wrapped footer text in XML tags
     updated_text = re.sub(pattern, wrapper, text, flags=re.MULTILINE)
     return updated_text
 
@@ -83,10 +81,12 @@ def link_annotations(text: str) -> str:
     Returns:
         str: Text with annotations linked using XML tags.
     """
-    # Pattern to find 'word ending with [number)]' where 'word' starts with alphabetic characters
+    # Words ending with numbers followed by a parenthesis
     pattern = r"(\b[a-zA-Z]+\w*)(\d+\))"
-    # Replacement pattern that formats the word and number into a reference format
+
+    # Wrap the matched words in XML tags
     result = re.sub(pattern, r"\1 <przypis>\2</przypis>)", text)
+
     # Adjust the parenthesis in the result to correctly format numbers
     result = re.sub(r"(\d+)\)", r"\1", result)
     return result
@@ -102,15 +102,13 @@ def merge_newline_divided_words(text: str) -> str:
     Returns:
         str: Text with previously split words now merged.
     """
-    # Regex pattern to find words split across newlines by a hyphen
+    # Words split across newlines by a hyphen
     pattern = r"(\w+)-\s*\n\s*(\w+)"
 
-    # Function to replace each match
     def replacer(match: re.Match) -> str:
         # Merge the parts without the hyphen
         return match.group(1) + match.group(2)
 
-    # Substitute newline divided words using the replacer function
     merged_text = re.sub(pattern, replacer, text)
     return merged_text
 
@@ -125,6 +123,8 @@ def preprocess_documents(documents: List[Document]) -> List[Document]:
     Returns:
         List[Document]: The list of preprocessed document objects.
     """
+    logging.info(f"Starting preprocessing of {len(documents)} documents.")
+
     for doc in documents:
         page_content = doc.page_content
 
@@ -135,6 +135,8 @@ def preprocess_documents(documents: List[Document]) -> List[Document]:
         page_content = merge_newline_divided_words(page_content)
 
         doc.page_content = page_content.strip()
+
+    logging.info("Completed preprocessing documents.")
 
     return documents
 
@@ -149,13 +151,11 @@ def contains_new_section(text: str) -> bool:
     Returns:
         bool: True if a new section header is found, False otherwise.
     """
-    # Define the regex pattern: 'DZIAŁ ' followed by one or more Roman numeral characters
+    # 'DZIAŁ' with optional whitespaces followed by one or more Roman numeral characters
     pattern = r"D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+"
 
-    # Use re.search to find the pattern in the input string
     match = re.search(pattern, text)
 
-    # Return True if a match is found, otherwise False
     return bool(match)
 
 
@@ -193,6 +193,8 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
     """
     restructured_document = []
     section_idx = 0
+
+    # 'DZIAŁ' with optional whitespaces followed by one or more Roman numeral characters
     section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"
 
     # Initialize an empty Document to start with the introductory header
@@ -315,14 +317,20 @@ def process_documents(filepath: Path) -> List[Document]:
     Returns:
         List[Document]: A list of Document objects with restructured sections and paragraphs.
     """
+    logging.info(f"Loading documents from {filepath}")
     loader = PyPDFLoader(file_path=filepath.as_posix())
     original_documents = loader.load()
 
+    logging.info("Preprocessing documents")
     preprocessed_documents = preprocess_documents(original_documents)
 
+    logging.info("Restructuring documents by sections")
     restructured_sections = restructure_documents_by_sections(preprocessed_documents)
+
+    logging.info("Restructuring documents by paragraphs")
     restructured_paragraphs = restructure_documents_by_paragraphs(restructured_sections)
 
+    logging.info("Completed processing documents")
     return restructured_paragraphs
 
 
