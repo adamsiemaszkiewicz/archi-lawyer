@@ -166,44 +166,52 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
 
 
 def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Document]:
+    """
+    Restructures documents into paragraphs, ensuring that section headers are not doubled in the first paragraph.
+
+    Args:
+        documents (List[Document]): A list of Document objects to restructure.
+
+    Returns:
+        List[Document]: A list of Document objects with updated paragraph structures.
+    """
     paragraph_pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*ał\s+\d+[a-z]?"
     restructured_documents = []
     paragraph_idx = 0
-    current_header = ""
 
     for doc in documents:
         page_content = doc.page_content
         paragraph_splits = list(re.finditer(paragraph_pattern, page_content))
-
-        # Extract the section header from the current document
+        current_header = ""
         header_end_idx = page_content.find("</dział>") + len("</dział>")
+
         if header_end_idx > -1:
             current_header = page_content[:header_end_idx]
 
         if not paragraph_splits:
-            # No paragraphs found, treat whole content as a single paragraph with the header
-            doc.page_content = current_header + page_content
+            # If no paragraphs are identified, treat the whole content as a single paragraph with the header.
+            doc.page_content = page_content
             doc.metadata["paragraph_id"] = paragraph_idx
             restructured_documents.append(doc)
             continue
 
-        # Process each split point
+        # Process each split point.
         start_idx = 0
-        for match in paragraph_splits:
+        for i, match in enumerate(paragraph_splits):
             end_idx = match.start()
             if start_idx != end_idx:
-                # Add the previous paragraph with the header
                 paragraph_content = page_content[start_idx:end_idx].strip()
                 if paragraph_content:
-                    full_paragraph_content = current_header + "\n" + paragraph_content
+                    # For the first paragraph, avoid duplicating the header if it's already there.
+                    header_to_add = "" if (i == 0 and contains_new_section(paragraph_content)) else current_header
+                    full_paragraph_content = header_to_add + paragraph_content
                     restructured_documents.append(
                         Document(page_content=full_paragraph_content, metadata={"paragraph_id": paragraph_idx})
                     )
                     paragraph_idx += 1
-
             start_idx = end_idx
 
-        # Add the last paragraph in the document with the header
+        # Handle the last paragraph in the document.
         last_paragraph = page_content[start_idx:].strip()
         if last_paragraph:
             full_last_paragraph = current_header + "\n" + last_paragraph
