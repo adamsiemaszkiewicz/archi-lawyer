@@ -169,13 +169,20 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
     paragraph_pattern = r"R\s*o\s*z\s*d\s*z\s*i\s*ał\s+\d+[a-z]?"
     restructured_documents = []
     paragraph_idx = 0
+    current_header = ""
 
     for doc in documents:
         page_content = doc.page_content
         paragraph_splits = list(re.finditer(paragraph_pattern, page_content))
 
+        # Extract the section header from the current document
+        header_end_idx = page_content.find("</dział>") + len("</dział>")
+        if header_end_idx > -1:
+            current_header = page_content[:header_end_idx]
+
         if not paragraph_splits:
-            # No paragraphs found, treat whole content as a single paragraph
+            # No paragraphs found, treat whole content as a single paragraph with the header
+            doc.page_content = current_header + page_content
             doc.metadata["paragraph_id"] = paragraph_idx
             restructured_documents.append(doc)
             continue
@@ -185,21 +192,23 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
         for match in paragraph_splits:
             end_idx = match.start()
             if start_idx != end_idx:
-                # Add the previous paragraph
+                # Add the previous paragraph with the header
                 paragraph_content = page_content[start_idx:end_idx].strip()
                 if paragraph_content:
+                    full_paragraph_content = current_header + "\n" + paragraph_content
                     restructured_documents.append(
-                        Document(page_content=paragraph_content, metadata={"paragraph_id": paragraph_idx})
+                        Document(page_content=full_paragraph_content, metadata={"paragraph_id": paragraph_idx})
                     )
                     paragraph_idx += 1
 
             start_idx = end_idx
 
-        # Add the last paragraph in the document
+        # Add the last paragraph in the document with the header
         last_paragraph = page_content[start_idx:].strip()
         if last_paragraph:
+            full_last_paragraph = current_header + "\n" + last_paragraph
             restructured_documents.append(
-                Document(page_content=last_paragraph, metadata={"paragraph_id": paragraph_idx})
+                Document(page_content=full_last_paragraph, metadata={"paragraph_id": paragraph_idx})
             )
             paragraph_idx += 1
 
