@@ -2,6 +2,7 @@
 import logging
 import os
 import re
+from pathlib import Path
 from typing import List
 
 from langchain_community.document_loaders import PyPDFLoader
@@ -13,23 +14,35 @@ logging.basicConfig(level=logging.INFO)
 
 
 def strip_prefix(text: str) -> str:
-    # Define the prefix pattern with flexibility for white spaces
+    """
+    Removes a document prefix from the text if it exists.
+
+    Args:
+        text (str): The input text from which the prefix will be stripped.
+
+    Returns:
+        str: The text with the prefix removed if it was present.
+    """
+    # Prefix pattern, usually found in legal documents issued on specific dates
     prefix_pattern = (
         r"^\s*Załącznik\s*do\s*obwieszczenia\s*Ministra\s*Inwestycji\s*i\s*Rozwoju\s*"
         r"z\s*dnia\s*8\s*kwietnia\s*2019\s*r\.\s*\(poz\.\s*1065\)\s*"
     )
-
-    # Use regex to check if the string starts with the prefix pattern
     if re.match(prefix_pattern, text):
-        # If it does, strip the prefix
-        stripped_string = re.sub(prefix_pattern, "", text)
-        return stripped_string.strip()  # Remove any remaining white spaces
-
-    # If the prefix is not found, return the original string
+        return re.sub(prefix_pattern, "", text).strip()
     return text
 
 
 def remove_header(text: str) -> str:
+    """
+    Removes a page header from a document text.
+
+    Args:
+        text (str): The text from which the header will be removed.
+
+    Returns:
+        str: Text with the header removed.
+    """
     # Define the pattern, accounting for variable digits and flexible whitespace/newlines
     pattern = r"\s*\n*Dziennik Ustaw –\s*\d+\s*– Poz\. 1065\s*\n*"
 
@@ -39,7 +52,15 @@ def remove_header(text: str) -> str:
 
 
 def wrap_footer(text: str) -> str:
-    """Wraps the footer of the text within XML tags for references."""
+    """
+    Encapsulates the reference footer within XML tags.
+
+    Args:
+        text (str): The text where the footer will be wrapped.
+
+    Returns:
+        str: Text with the footer wrapped in XML tags.
+    """
     # Define the pattern to find footer text after two newlines (with optional whitespace)
     pattern = r"(\n\s*\n)(\S[\s\S]*)$"
 
@@ -53,6 +74,15 @@ def wrap_footer(text: str) -> str:
 
 
 def link_annotations(text: str) -> str:
+    """
+    Links annotations in the text with XML tags.
+
+    Args:
+        text (str): The text to process for annotations linking.
+
+    Returns:
+        str: Text with annotations linked using XML tags.
+    """
     # Pattern to find 'word ending with [number)]' where 'word' starts with alphabetic characters
     pattern = r"(\b[a-zA-Z]+\w*)(\d+\))"
     # Replacement pattern that formats the word and number into a reference format
@@ -63,6 +93,15 @@ def link_annotations(text: str) -> str:
 
 
 def merge_newline_divided_words(text: str) -> str:
+    """
+    Merges words that are split by a newline.
+
+    Args:
+        text (str): The text containing potentially split words.
+
+    Returns:
+        str: Text with previously split words now merged.
+    """
     # Regex pattern to find words split across newlines by a hyphen
     pattern = r"(\w+)-\s*\n\s*(\w+)"
 
@@ -77,6 +116,15 @@ def merge_newline_divided_words(text: str) -> str:
 
 
 def preprocess_documents(documents: List[Document]) -> List[Document]:
+    """
+    Preprocesses a list of document objects for text cleaning operations.
+
+    Args:
+        documents (List[Document]): A list of document objects to preprocess.
+
+    Returns:
+        List[Document]: The list of preprocessed document objects.
+    """
     for doc in documents:
         page_content = doc.page_content
 
@@ -92,6 +140,15 @@ def preprocess_documents(documents: List[Document]) -> List[Document]:
 
 
 def contains_new_section(text: str) -> bool:
+    """
+    Determine if the text contains a new section header.
+
+    Args:
+        text (str): Text to check for a new section header.
+
+    Returns:
+        bool: True if a new section header is found, False otherwise.
+    """
     # Define the regex pattern: 'DZIAŁ ' followed by one or more Roman numeral characters
     pattern = r"D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+"
 
@@ -103,6 +160,15 @@ def contains_new_section(text: str) -> bool:
 
 
 def int_to_roman(num: int) -> str:
+    """
+    Converts an integer to Roman numeral representation.
+
+    Args:
+        num (int): The integer to convert.
+
+    Returns:
+        str: The Roman numeral representation of the integer.
+    """
     val = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
     syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
     roman_num = ""
@@ -116,7 +182,15 @@ def int_to_roman(num: int) -> str:
 
 
 def restructure_documents_by_sections(documents: List[Document]) -> List[Document]:
-    """Restructures a list of documents by sections, adding XML headers to section names and titles."""
+    """
+    Restructures list of documents based on sections
+
+    Args:
+        documents (List[Document]): A list of Document objects to restructure.
+
+    Returns:
+        List[Document]: A list of Document objects with updated section structures.
+    """
     restructured_document = []
     section_idx = 0
     section_pattern = r"(D\s*Z\s*I\s*A\s*Ł\s+[IVXLCDM]+)"
@@ -169,7 +243,7 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
 
 def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Document]:
     """
-    Restructures documents into paragraphs, ensuring that section headers are not doubled in the first paragraph.
+    Restructures list of documents based on paragraphs
 
     Args:
         documents (List[Document]): A list of Document objects to restructure.
@@ -231,13 +305,28 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
     return restructured_documents
 
 
-if __name__ == "__main__":
-    pdf_fp = DATA_DIR / "D20191065.pdf"
+def process_documents(filepath: Path) -> List[Document]:
+    """
+    Processes a PDF document by loading, preprocessing, and restructuring it.
 
-    loader = PyPDFLoader(file_path=pdf_fp.as_posix())
+    Args:
+        filepath (Path): The file path of the PDF document to process.
+
+    Returns:
+        List[Document]: A list of Document objects with restructured sections and paragraphs.
+    """
+    loader = PyPDFLoader(file_path=filepath.as_posix())
     original_documents = loader.load()
 
     preprocessed_documents = preprocess_documents(original_documents)
 
     restructured_sections = restructure_documents_by_sections(preprocessed_documents)
     restructured_paragraphs = restructure_documents_by_paragraphs(restructured_sections)
+
+    return restructured_paragraphs
+
+
+if __name__ == "__main__":
+    pdf_fp = DATA_DIR / "D20191065.pdf"
+
+    process_documents(pdf_fp)
