@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 import re
 from typing import List
 
@@ -152,9 +153,10 @@ def restructure_documents_by_sections(documents: List[Document]) -> List[Documen
             section_name = "DZIAŁ"
             header = f"<dział>\n  <nazwa>{section_name} {roman_num}</nazwa>\n  <tytuł>{title}</tytuł>\n</dział>\n"
 
+            source_file = os.path.basename(doc.metadata.get("source", None))
             current_section = Document(
                 page_content=header + content_after,
-                metadata={"section_id": section_idx, "document_id": doc.metadata.get("document_id", "")},
+                metadata={"source": source_file, "section_id": section_idx},
             )
         else:
             current_section.page_content += page_content + "\n"
@@ -206,7 +208,10 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
                     header_to_add = "" if (i == 0 and contains_new_section(paragraph_content)) else current_header
                     full_paragraph_content = header_to_add + paragraph_content
                     restructured_documents.append(
-                        Document(page_content=full_paragraph_content, metadata={"paragraph_id": paragraph_idx})
+                        Document(
+                            page_content=full_paragraph_content,
+                            metadata={"source": doc.metadata.get("source", None), "paragraph_id": paragraph_idx},
+                        )
                     )
                     paragraph_idx += 1
             start_idx = end_idx
@@ -216,7 +221,10 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
         if last_paragraph:
             full_last_paragraph = current_header + "\n" + last_paragraph
             restructured_documents.append(
-                Document(page_content=full_last_paragraph, metadata={"paragraph_id": paragraph_idx})
+                Document(
+                    page_content=full_last_paragraph,
+                    metadata={"source": doc.metadata.get("source", None), "paragraph_id": paragraph_idx},
+                )
             )
             paragraph_idx += 1
 
