@@ -307,6 +307,31 @@ def restructure_documents_by_paragraphs(documents: List[Document]) -> List[Docum
     return restructured_documents
 
 
+def extract_appendixes(document: Document) -> List[Document]:
+    """
+    Extracts appendix sections from a provided document object based on a specified pattern.
+
+    Args:
+        document (Document): The document from which appendixes will be extracted.
+
+    Returns:
+        List[Document]: A list of new Document objects, each containing an appendix section.
+    """
+    text = document.page_content
+    appendix_pattern = r"(Załącznik nr \d+ \n[A-Z\s]+)"
+    parts = re.split(appendix_pattern, text)
+    appendix_documents = []
+
+    for i in range(1, len(parts), 2):
+        if i + 1 < len(parts):
+            appendix_content = parts[i] + parts[i + 1]
+            page_content = "<dział>\n  <nazwa>ZAŁĄCZNIKI</nazwa>\n  </dział>" + appendix_content
+            appendix_doc = Document(page_content=page_content, metadata=document.metadata)
+            appendix_documents.append(appendix_doc)
+
+    return appendix_documents
+
+
 def process_documents(filepath: Path) -> List[Document]:
     """
     Processes a PDF document by loading, preprocessing, and restructuring it.
@@ -330,8 +355,13 @@ def process_documents(filepath: Path) -> List[Document]:
     logging.info("Restructuring documents by paragraphs")
     restructured_paragraphs = restructure_documents_by_paragraphs(restructured_sections)
 
+    logging.info("Extracting appendixes")
+    last_document = restructured_paragraphs.pop(-1)
+    appendixes = extract_appendixes(last_document)
+    restructured_documents = restructured_paragraphs + appendixes
+
     logging.info("Completed processing documents")
-    return restructured_paragraphs
+    return restructured_documents
 
 
 if __name__ == "__main__":
